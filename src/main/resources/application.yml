@@ -2,11 +2,24 @@ spring:
   application:
     name: redis-jwt-example
 
+  datasource:
+    url: jdbc:mysql://localhost:3306/auth_db?serverTimezone=UTC&characterEncoding=UTF-8
+    username: test
+    password: test@1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: My-Hikari-Pool
+      maximum-pool-size: 10  # 최대 커넥션 수
+      minimum-idle: 2        # 최소 유휴 커넥션 수
+      idle-timeout: 30000    # 유휴 커넥션 최대 유지 시간 (30초)
+      max-lifetime: 1800000  # 커넥션 최대 유지 시간 (30분)
+      connection-timeout: 3000  # 커넥션 요청 최대 대기 시간 (3초)
+
   data:
     redis:
       host: localhost
       port: 6379
-      password: ${password}
+      password: test@1234
       lettuce:
         pool:
           max-active: 8
