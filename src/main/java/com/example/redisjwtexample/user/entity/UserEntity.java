@@ -17,10 +17,15 @@ public class UserEntity {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String username;
+    private String userId;
 
     @Column(nullable = false)
     private String password;
+
+    public UserEntity(String userId, String password) {
+        this.userId = userId;
+        this.password = password;
+    }
 }
 
 
