@@ -1,15 +1,13 @@
-package com.example.redisjwtexample.jwt;
+package com.example.redisjwtexample.jwt.helper;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.security.Key;
 import java.time.Duration;
 import java.util.Date;
 import java.util.Map;
@@ -34,12 +32,12 @@ public class JwtHelper {
     /**
      * Access Token 생성
      */
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(String username, String role) {
 
         return Jwts.builder()
                 .issuer("KIM")
                 .subject(username)
-                .claims(Map.of())
+                .claims(Map.of("role", role))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration.toMillis()))
                 .signWith(key)
@@ -49,11 +47,11 @@ public class JwtHelper {
     /**
      * Refresh Token 생성
      */
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(String username, String role) {
         return Jwts.builder()
                 .issuer("KIM")
                 .subject(username)
-                .claims(Map.of())
+                .claims(Map.of("role", role))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration.toMillis()))
                 .signWith(key)
