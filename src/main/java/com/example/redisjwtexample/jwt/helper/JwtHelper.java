@@ -1,5 +1,7 @@
 package com.example.redisjwtexample.jwt.helper;
 
+import com.example.redisjwtexample.jwt.constants.ClaimKeys;
+import com.example.redisjwtexample.jwt.constants.TokenType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -37,7 +39,10 @@ public class JwtHelper {
         return Jwts.builder()
                 .issuer("KIM")
                 .subject(username)
-                .claims(Map.of("role", role))
+                .claims(Map.of(
+                        ClaimKeys.ROLE.name(), role,
+                        ClaimKeys.TOKEN_TYPE.name(), TokenType.ACCESS
+                ))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration.toMillis()))
                 .signWith(key)
@@ -51,7 +56,10 @@ public class JwtHelper {
         return Jwts.builder()
                 .issuer("KIM")
                 .subject(username)
-                .claims(Map.of("role", role))
+                .claims(Map.of(
+                        ClaimKeys.ROLE.name(), role,
+                        ClaimKeys.TOKEN_TYPE.name(), TokenType.REFRESH
+                ))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration.toMillis()))
                 .signWith(key)

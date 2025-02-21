@@ -29,5 +29,4 @@ public class LoginService {
 
         return new LoginRespDto(loginReqDto.getUserId(), tokenDto);
     }
-
 }

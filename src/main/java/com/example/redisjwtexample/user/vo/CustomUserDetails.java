@@ -23,6 +23,10 @@ public class CustomUserDetails implements UserDetails, CredentialsContainer {
         return new CustomUserDetails(userEntity.getUserId(), userEntity.getPassword(), userEntity.getRole());
     }
 
+    public static CustomUserDetails of(String userId, String role) {
+        return new CustomUserDetails(userId, null, role);
+    }
+
     @Override
     public void eraseCredentials() {
         this.password = null;

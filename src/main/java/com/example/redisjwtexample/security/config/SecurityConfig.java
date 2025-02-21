@@ -1,6 +1,7 @@
 package com.example.redisjwtexample.security.config;
 
-import com.example.redisjwtexample.security.CustomAuthenticationEntryPoint;
+import com.example.redisjwtexample.jwt.filters.JwtAuthenticationFilter;
+import com.example.redisjwtexample.security.entryPoint.CustomAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,12 +14,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
-                                           CustomAuthenticationEntryPoint authenticationEntryPoint) throws Exception {
+                                           CustomAuthenticationEntryPoint authenticationEntryPoint,
+                                           JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+
         http
                 .securityMatcher("/api/v1/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -32,7 +36,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(authenticationEntryPoint));
+                        .authenticationEntryPoint(authenticationEntryPoint))
+
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
