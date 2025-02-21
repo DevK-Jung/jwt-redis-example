@@ -2,6 +2,7 @@ package com.example.redisjwtexample.security.config;
 
 import com.example.redisjwtexample.jwt.filters.JwtAuthenticationFilter;
 import com.example.redisjwtexample.security.entryPoint.CustomAuthenticationEntryPoint;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +19,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
+    @Value("${security.jwt.exclude-urls}")
+    private String[] excludeUrls;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            CustomAuthenticationEntryPoint authenticationEntryPoint,
@@ -32,7 +37,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/login", "/api/v1/logout").permitAll()
+                        .requestMatchers(excludeUrls).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
