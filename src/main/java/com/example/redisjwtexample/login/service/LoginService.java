@@ -2,6 +2,7 @@ package com.example.redisjwtexample.login.service;
 
 import com.example.redisjwtexample.jwt.dto.TokenDto;
 import com.example.redisjwtexample.jwt.service.JwtService;
+import com.example.redisjwtexample.login.dto.LogoutReqDto;
 import com.example.redisjwtexample.login.dto.LoginReqDto;
 import com.example.redisjwtexample.login.dto.LoginRespDto;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +29,10 @@ public class LoginService {
         TokenDto tokenDto = jwtLogin.jwtLogin(authenticate);
 
         return new LoginRespDto(loginReqDto.getUserId(), tokenDto);
+    }
+
+    public void logout(LogoutReqDto logOutReqDto) {
+
+        jwtLogin.jwtLogout(logOutReqDto.getRefreshToken());
     }
 }

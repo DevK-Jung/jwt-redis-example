@@ -2,6 +2,7 @@ package com.example.redisjwtexample.login.controller;
 
 import com.example.redisjwtexample.login.dto.LoginReqDto;
 import com.example.redisjwtexample.login.dto.LoginRespDto;
+import com.example.redisjwtexample.login.dto.LogoutReqDto;
 import com.example.redisjwtexample.login.service.LoginService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -19,5 +20,11 @@ public class LoginController {
     public LoginRespDto login(@Validated @RequestBody LoginReqDto loginReqDto) {
 
         return loginService.login(loginReqDto);
+    }
+
+    @PostMapping("/api/v1/logout")
+    public void logout(@Validated @RequestBody LogoutReqDto logoutReqDto) {
+
+        loginService.logout(logoutReqDto);
     }
 }

@@ -5,8 +5,11 @@ import com.example.redisjwtexample.jwt.helper.JwtHelper;
 import com.example.redisjwtexample.redis.entity.RefreshTokenEntity;
 import com.example.redisjwtexample.redis.repository.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.micrometer.common.util.StringUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class JwtService {
@@ -22,7 +26,7 @@ public class JwtService {
 
     private final JwtHelper jwtHelper;
 
-    public TokenDto jwtLogin(Authentication authentication) {
+    public TokenDto jwtLogin(@NonNull Authentication authentication) {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
@@ -36,6 +40,24 @@ public class JwtService {
         saveRedisRefreshToken(refreshToken, userId);
 
         return new TokenDto(accessToken, refreshToken);
+    }
+
+    public void jwtLogout(@NonNull String refreshToken) {
+
+        if (StringUtils.isBlank(refreshToken)) throw new IllegalArgumentException();
+
+        try {
+            String userId = getUserIdByToken(refreshToken);
+
+            refreshTokenRepository.deleteByUserId(userId);
+        } catch (ExpiredJwtException e) { // 이미 만료된 토큰이면 return
+            log.debug(">>> 이미 만료된 토큰");
+        }
+    }
+
+    private String getUserIdByToken(String token) {
+        return jwtHelper.parseToken(token)
+                .getSubject();
     }
 
     private void saveRedisRefreshToken(String refreshToken, String userId) {
