@@ -18,7 +18,7 @@ public class RefreshTokenEntity {
     @Id
     private String userId;
     private String refreshToken;
-    @TimeToLive(unit = TimeUnit.SECONDS)
+    @TimeToLive(unit = TimeUnit.MICROSECONDS)
     private Long timeToLive; // TTL (Time-To-Live) 설정, 일 단위
 
     public RefreshTokenEntity(String userId, String refreshToken, Long timeToLive) {
