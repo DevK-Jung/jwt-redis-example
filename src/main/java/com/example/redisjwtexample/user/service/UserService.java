@@ -29,11 +29,11 @@ public class UserService {
      */
     public void createDefaultUsers() {
         if (userRepository.count() > 0) return;
-        UserEntity admin = new UserEntity("admin", passwordEncoder.encode("admin1234"));
+        UserEntity admin = new UserEntity("admin", passwordEncoder.encode("admin1234"), "admin");
 
         userRepository.save(admin);
 
-        UserEntity user = new UserEntity("user", passwordEncoder.encode("user1234"));
+        UserEntity user = new UserEntity("user", passwordEncoder.encode("user1234"), "user");
 
         userRepository.save(user);
 

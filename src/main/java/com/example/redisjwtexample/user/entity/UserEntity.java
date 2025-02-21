@@ -21,10 +21,13 @@ public class UserEntity {
 
     @Column(nullable = false)
     private String password;
+    @Column(nullable = false)
+    private String role;
 
-    public UserEntity(String userId, String password) {
+    public UserEntity(String userId, String password, String role) {
         this.userId = userId;
         this.password = password;
+        this.role = role;
     }
 }
 

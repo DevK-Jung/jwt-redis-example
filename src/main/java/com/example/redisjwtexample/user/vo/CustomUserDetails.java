@@ -4,9 +4,11 @@ import com.example.redisjwtexample.user.entity.UserEntity;
 import lombok.*;
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -15,9 +17,10 @@ public class CustomUserDetails implements UserDetails, CredentialsContainer {
 
     private String username;
     private String password;
+    private String role;
 
     public static CustomUserDetails fromEntity(@NonNull UserEntity userEntity) {
-        return new CustomUserDetails(userEntity.getUserId(), userEntity.getPassword());
+        return new CustomUserDetails(userEntity.getUserId(), userEntity.getPassword(), userEntity.getRole());
     }
 
     @Override
@@ -27,7 +30,11 @@ public class CustomUserDetails implements UserDetails, CredentialsContainer {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+
+        return Stream.of(this.role)
+                .map(SimpleGrantedAuthority::new)
+                .toList();
     }
+
 
 }
