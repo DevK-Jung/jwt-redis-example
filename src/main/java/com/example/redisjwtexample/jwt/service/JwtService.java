@@ -5,13 +5,15 @@ import com.example.redisjwtexample.jwt.constants.TokenType;
 import com.example.redisjwtexample.jwt.dto.ReissueDto;
 import com.example.redisjwtexample.jwt.dto.TokenDto;
 import com.example.redisjwtexample.jwt.helper.JwtHelper;
-import com.example.redisjwtexample.redis.entity.RefreshTokenEntity;
-import com.example.redisjwtexample.redis.repository.RefreshTokenRepository;
+import com.example.redisjwtexample.redis.blacklist.service.AccessTokenBlacklistService;
+import com.example.redisjwtexample.redis.refresh.entity.RefreshTokenEntity;
+import com.example.redisjwtexample.redis.refresh.repository.RefreshTokenRepository;
 import com.example.redisjwtexample.user.entity.UserEntity;
 import com.example.redisjwtexample.user.repository.UserRepository;
 import com.example.redisjwtexample.utils.CookieUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.micrometer.common.util.StringUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -34,6 +37,8 @@ public class JwtService {
     private final JwtHelper jwtHelper;
 
     private final UserRepository userRepository;
+
+    private final AccessTokenBlacklistService accessTokenBlacklistService;
 
     private final Environment env;
 
@@ -84,18 +89,56 @@ public class JwtService {
         return userId;
     }
 
-    public void jwtLogout(@NonNull String refreshToken) {
+    public void jwtLogout() {
 
-        if (StringUtils.isBlank(refreshToken)) throw new IllegalArgumentException();
+        expireRefreshToken();
+
+        expireAccessToken();
+    }
+
+    private void expireRefreshToken() {
+
+        String refreshToken = CookieUtils.getCookie(REFRESH_TOKEN_COOKIE_KEY);
+
+        if (StringUtils.isBlank(refreshToken)) return;
 
         try {
             String userId = getUserIdByToken(refreshToken);
 
-            refreshTokenRepository.deleteByUserId(userId); // reids 에서 제거
+            // 쿠키 제거
+            CookieUtils.deleteCookie(REFRESH_TOKEN_COOKIE_KEY);
+
+            Optional<RefreshTokenEntity> entityOpt = refreshTokenRepository.findById(userId);
+
+            if (entityOpt.isPresent() && refreshToken.equals(entityOpt.get().getRefreshToken()))
+                refreshTokenRepository.deleteById(userId);
 
         } catch (ExpiredJwtException e) { // 이미 만료된 토큰이면 return
             log.debug(">>> 이미 만료된 토큰");
         }
+    }
+
+    private void expireAccessToken() {
+        String accessToken = getRequestAccessToken();
+
+        if (StringUtils.isBlank(accessToken)) return;
+
+        try {
+            Date expiration = jwtHelper.parseToken(accessToken)
+                    .getExpiration();
+
+            // redis에AccessToken blackList에 추가
+            accessTokenBlacklistService.setBlackList(accessToken, expiration.getTime());
+
+        } catch (JwtException e) {
+            // 만료 및 잘못된 토큰은 넘김
+            log.error(">> AccessToken 만료 처리 {}", e.getMessage());
+        }
+
+    }
+
+    private String getRequestAccessToken() {
+        return jwtHelper.getAccessTokenFromHeader();
     }
 
     private TokenDto createTokenDto(String userId, String role) {

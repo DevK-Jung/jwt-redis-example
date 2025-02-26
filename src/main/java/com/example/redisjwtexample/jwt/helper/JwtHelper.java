@@ -2,12 +2,15 @@ package com.example.redisjwtexample.jwt.helper;
 
 import com.example.redisjwtexample.jwt.constants.ClaimKeys;
 import com.example.redisjwtexample.jwt.constants.TokenType;
+import com.example.redisjwtexample.utils.ServletUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
@@ -87,5 +90,15 @@ public class JwtHelper {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public String getAccessTokenFromHeader() {
+        String bearerToken = ServletUtils.getHeader(HttpHeaders.AUTHORIZATION);
+
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.split(" ")[1].trim();
+        }
+
+        return null;
     }
 }

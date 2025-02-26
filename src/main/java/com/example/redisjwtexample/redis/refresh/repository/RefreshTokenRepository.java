@@ -1,9 +1,7 @@
-package com.example.redisjwtexample.redis.repository;
+package com.example.redisjwtexample.redis.refresh.repository;
 
-import com.example.redisjwtexample.redis.entity.RefreshTokenEntity;
+import com.example.redisjwtexample.redis.refresh.entity.RefreshTokenEntity;
 import org.springframework.data.repository.CrudRepository;
-
-import java.util.Optional;
 
 public interface RefreshTokenRepository extends CrudRepository<RefreshTokenEntity, String> {
     void deleteByUserId(String userId);

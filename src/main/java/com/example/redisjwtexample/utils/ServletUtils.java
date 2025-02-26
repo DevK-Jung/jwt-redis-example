@@ -21,4 +21,9 @@ public class ServletUtils {
                 .map(ra -> ((ServletRequestAttributes) ra).getResponse())
                 .orElse(null);
     }
+
+    public String getHeader(String key) {
+        return Optional.ofNullable(getServletRequest()).map(req -> req.getHeader(key))
+                .orElse(null);
+    }
 }
