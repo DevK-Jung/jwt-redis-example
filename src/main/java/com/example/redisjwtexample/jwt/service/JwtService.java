@@ -9,12 +9,14 @@ import com.example.redisjwtexample.redis.entity.RefreshTokenEntity;
 import com.example.redisjwtexample.redis.repository.RefreshTokenRepository;
 import com.example.redisjwtexample.user.entity.UserEntity;
 import com.example.redisjwtexample.user.repository.UserRepository;
+import com.example.redisjwtexample.utils.CookieUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.common.util.StringUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,10 @@ public class JwtService {
     private final JwtHelper jwtHelper;
 
     private final UserRepository userRepository;
+
+    private final Environment env;
+
+    private static final String REFRESH_TOKEN_COOKIE_KEY = "refreshToken";
 
     public TokenDto jwtLogin(@NonNull Authentication authentication) {
 
@@ -85,7 +91,8 @@ public class JwtService {
         try {
             String userId = getUserIdByToken(refreshToken);
 
-            refreshTokenRepository.deleteByUserId(userId);
+            refreshTokenRepository.deleteByUserId(userId); // reids 에서 제거
+
         } catch (ExpiredJwtException e) { // 이미 만료된 토큰이면 return
             log.debug(">>> 이미 만료된 토큰");
         }
@@ -96,7 +103,7 @@ public class JwtService {
         String accessToken = jwtHelper.generateAccessToken(userId, role);
         String refreshToken = jwtHelper.generateRefreshToken(userId, role);
 
-        saveRedisRefreshToken(refreshToken, userId);
+        storeRefreshToken(refreshToken, userId);
 
         return new TokenDto(accessToken, refreshToken);
     }
@@ -106,18 +113,31 @@ public class JwtService {
                 .getSubject();
     }
 
-    private void saveRedisRefreshToken(String refreshToken, String userId) {
+    private void storeRefreshToken(String refreshToken, String userId) {
         Date expiration = jwtHelper.parseToken(refreshToken)
                 .getExpiration();
 
         long remainingTime = expiration.getTime() - new Date().getTime();
 
+        saveRefreshTokenInRedis(refreshToken, userId, remainingTime);
+        setRefreshTokenCookie(refreshToken, remainingTime / 1000);
+
+    }
+
+    private void saveRefreshTokenInRedis(String refreshToken, String userId, long remainingTime) {
         RefreshTokenEntity refreshTokenEntity = new RefreshTokenEntity(
                 userId,
                 refreshToken,
                 remainingTime);
 
         refreshTokenRepository.save(refreshTokenEntity);
+    }
+
+    private void setRefreshTokenCookie(String refreshToken, long remainingTime) {
+        // Refresh Token을 Cookie에 저장
+        boolean httpSecure = env.matchesProfiles("prod"); // 운영환경에서 secure 설정
+
+        CookieUtils.setRefreshTokenCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, remainingTime, httpSecure);
     }
 
     public <T> T getValueFromClaims(Claims claims, String key, Class<T> responseType) {
