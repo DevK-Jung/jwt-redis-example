@@ -10,6 +10,7 @@ import com.example.redisjwtexample.redis.refresh.entity.RefreshTokenEntity;
 import com.example.redisjwtexample.redis.refresh.repository.RefreshTokenRepository;
 import com.example.redisjwtexample.user.entity.UserEntity;
 import com.example.redisjwtexample.user.repository.UserRepository;
+import com.example.redisjwtexample.user.vo.CustomUserDetails;
 import com.example.redisjwtexample.utils.CookieUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -19,6 +20,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -56,21 +58,43 @@ public class JwtService {
 
     // accessToken, refreshToken 둘 다 재생성 하도록 만들어서 redis에서 최신 refreshToken만 유지
     // 토큰 탈취로 이전 refreshToken으로 재발급 수행 시 에러 발생하도록 구현
-    public TokenDto reissue(String accessToken, ReissueDto reissueDto) {
+    public TokenDto reissue() {
 
-        // accessToken 만료 여부 체크
-        if (jwtHelper.validateToken(accessToken)) throw new IllegalArgumentException("AccessToken이 만료되지 않았습니다.");
+        String accessToken = getRequestAccessToken();
+        String refreshToken = getRequestRefreshToken();
 
-        String userId = validateRefreshToken(reissueDto);
+        // token 재발행을 위한 검증
+        validateTokenRefresh(accessToken, refreshToken);
 
-        // 사용자 정보 재조회
+        // 사용자 정보 조회 및 검증
+        String userId = getUserId(refreshToken);
+
         UserEntity user = userRepository.findByUserId(userId)
                 .orElseThrow();
 
+        CustomUserDetails customUserDetails = CustomUserDetails.fromEntity(user);
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(customUserDetails, null);
+
         // JWT 토큰 생성
-        return createTokenDto(userId, user.getRole());
+        return jwtLogin(authenticationToken);
 
     }
+
+    private void validateTokenRefresh(String accessToken, String refreshToken) {
+        // accessToken, RefreshToken 빈 값 체크
+        if (StringUtils.isBlank(accessToken) || StringUtils.isBlank(refreshToken))
+            throw new IllegalArgumentException("token 값은 필수 입니다.");
+
+        // accessToken 만료 확인 - 만료되지 않았으면 에러
+        if (jwtHelper.validateToken(accessToken))
+            throw new IllegalArgumentException("accessToken 만료 시 갱신 요청 가능합니다.");
+
+        // refreshToken 만료 확인 - 만료됐으면 세션 만료페이지로 이동시켜야함
+        if (!isRefreshTokenMatched())
+            throw new IllegalArgumentException();
+    }
+
 
     private String validateRefreshToken(ReissueDto reissueDto) {
         Claims claims = jwtHelper.parseToken(reissueDto.getRefreshToken());
