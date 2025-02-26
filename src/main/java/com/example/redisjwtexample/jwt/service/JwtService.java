@@ -53,7 +53,44 @@ public class JwtService {
         String userId = userDetails.getUsername();
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
-        return createTokenDto(userId, role);
+        return generateToken(userId, role);
+    }
+
+    private TokenDto generateToken(String userId, String role) {
+        // JWT 토큰 생성
+        String accessToken = jwtHelper.generateAccessToken(userId, role);
+        String refreshToken = jwtHelper.generateRefreshToken(userId, role);
+
+        storeRefreshToken(refreshToken, userId);
+
+        return new TokenDto(accessToken, refreshToken);
+    }
+
+    private void storeRefreshToken(String refreshToken, String userId) {
+        Date expiration = jwtHelper.parseToken(refreshToken)
+                .getExpiration();
+
+        long remainingTime = expiration.getTime() - new Date().getTime();
+
+        saveRefreshTokenInRedis(refreshToken, userId, remainingTime);
+        setRefreshTokenCookie(refreshToken, remainingTime / 1000);
+
+    }
+
+    private void saveRefreshTokenInRedis(String refreshToken, String userId, long remainingTime) {
+        RefreshTokenEntity refreshTokenEntity = new RefreshTokenEntity(
+                userId,
+                refreshToken,
+                remainingTime);
+
+        refreshTokenRepository.save(refreshTokenEntity);
+    }
+
+    private void setRefreshTokenCookie(String refreshToken, long remainingTime) {
+        // Refresh Token을 Cookie에 저장
+        boolean httpSecure = env.matchesProfiles("prod"); // 운영환경에서 secure 설정
+
+        CookieUtils.setRefreshTokenCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, remainingTime, httpSecure);
     }
 
     // accessToken, refreshToken 둘 다 재생성 하도록 만들어서 redis에서 최신 refreshToken만 유지
@@ -165,47 +202,12 @@ public class JwtService {
         return jwtHelper.getAccessTokenFromHeader();
     }
 
-    private TokenDto createTokenDto(String userId, String role) {
-        // JWT 토큰 생성
-        String accessToken = jwtHelper.generateAccessToken(userId, role);
-        String refreshToken = jwtHelper.generateRefreshToken(userId, role);
-
-        storeRefreshToken(refreshToken, userId);
-
-        return new TokenDto(accessToken, refreshToken);
-    }
 
     private String getUserIdByToken(String token) {
         return jwtHelper.parseToken(token)
                 .getSubject();
     }
 
-    private void storeRefreshToken(String refreshToken, String userId) {
-        Date expiration = jwtHelper.parseToken(refreshToken)
-                .getExpiration();
-
-        long remainingTime = expiration.getTime() - new Date().getTime();
-
-        saveRefreshTokenInRedis(refreshToken, userId, remainingTime);
-        setRefreshTokenCookie(refreshToken, remainingTime / 1000);
-
-    }
-
-    private void saveRefreshTokenInRedis(String refreshToken, String userId, long remainingTime) {
-        RefreshTokenEntity refreshTokenEntity = new RefreshTokenEntity(
-                userId,
-                refreshToken,
-                remainingTime);
-
-        refreshTokenRepository.save(refreshTokenEntity);
-    }
-
-    private void setRefreshTokenCookie(String refreshToken, long remainingTime) {
-        // Refresh Token을 Cookie에 저장
-        boolean httpSecure = env.matchesProfiles("prod"); // 운영환경에서 secure 설정
-
-        CookieUtils.setRefreshTokenCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, remainingTime, httpSecure);
-    }
 
     public <T> T getValueFromClaims(Claims claims, String key, Class<T> responseType) {
         Object value = claims.get(key);
@@ -257,7 +259,7 @@ public class JwtService {
         return refreshTokenOpt.get().getRefreshToken().equals(refreshToken);
     }
 
-    public String getUserId(String jwtToken) {
+    private String getUserId(String jwtToken) {
         return jwtHelper.parseToken(jwtToken)
                 .getSubject();
     }
