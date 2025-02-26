@@ -6,6 +6,7 @@ import com.example.redisjwtexample.jwt.constants.TokenType;
 import com.example.redisjwtexample.jwt.service.JwtService;
 import com.example.redisjwtexample.user.vo.CustomUserDetails;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -43,6 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = getAccessToken(request);
 
+        validateJwt(token);
+
         CustomUserDetails userDetails = getUserDetailsByToken(token);
 
         setAuthentication(userDetails);
@@ -78,6 +81,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setAuthentication(CustomUserDetails userDetails) {
         Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void validateJwt(String accessToken) {
+        // accessToken blackList 존재 여부 확인 - 존재하면 재발급 필요
+        if (jwtService.isBlacklisted(accessToken))
+            throw new ExpiredJwtException(null, null, "강제 만료된 accessToken 재발행 필요");
+
+        // refreshToken 다르면 중복 로그인
+        if (!jwtService.isRefreshTokenMatched())
+            throw new RuntimeException("중복 로그인");
     }
 
     @Override

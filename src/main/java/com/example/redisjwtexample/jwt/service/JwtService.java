@@ -203,4 +203,43 @@ public class JwtService {
 
         return jwtHelper.parseToken(token);
     }
+
+    /**
+     * accessToken BlackList인지 확인
+     */
+    public boolean isBlacklisted(String accessToken) {
+        return accessTokenBlacklistService.isBlacklisted(accessToken);
+    }
+
+    /**
+     * Client로 부터 넘어온 RefreshToken과 로그인 및 재발급시 저장한 refreshToken 을 비교
+     *
+     * @return 매치여부
+     */
+    public boolean isRefreshTokenMatched() {
+
+        String refreshToken = getRequestRefreshToken();
+
+        if (StringUtils.isBlank(refreshToken)) throw new IllegalArgumentException();
+
+        String userId = getUserId(refreshToken);
+
+//        if (allowDuplicateLoginIds.contains(userId)) return true; // 중복 로그인 허용 id
+
+        Optional<RefreshTokenEntity> refreshTokenOpt = refreshTokenRepository.findById(userId);
+
+        if (refreshTokenOpt.isEmpty()) throw new IllegalArgumentException();
+
+        return refreshTokenOpt.get().getRefreshToken().equals(refreshToken);
+    }
+
+    public String getUserId(String jwtToken) {
+        return jwtHelper.parseToken(jwtToken)
+                .getSubject();
+    }
+
+    public String getRequestRefreshToken() {
+
+        return CookieUtils.getCookie(REFRESH_TOKEN_COOKIE_KEY);
+    }
 }
