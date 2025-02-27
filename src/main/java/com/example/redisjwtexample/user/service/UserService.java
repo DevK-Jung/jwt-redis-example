@@ -5,6 +5,7 @@ import com.example.redisjwtexample.user.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +20,12 @@ public class UserService {
 
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${sample.create-user}")
+    private boolean createSampleUser;
+
     @PostConstruct
     public void init() {
-        createDefaultUsers();
+        if (createSampleUser) createDefaultUsers();
     }
 
     /**
@@ -29,15 +33,24 @@ public class UserService {
      */
     public void createDefaultUsers() {
         if (userRepository.count() > 0) return;
-        UserEntity admin = new UserEntity("admin", passwordEncoder.encode("admin1234"), "admin");
+
+        String adminId = "admin";
+        String adminPwd = "admin1234";
+        String adminRole = "admin";
+
+        UserEntity admin = new UserEntity(adminId, passwordEncoder.encode(adminPwd), adminRole);
 
         userRepository.save(admin);
 
-        UserEntity user = new UserEntity("user", passwordEncoder.encode("user1234"), "user");
+        String userId = "user";
+        String userPwd = "user1234";
+        String userRole = "user";
+
+        UserEntity user = new UserEntity(userId, passwordEncoder.encode(userPwd), userRole);
 
         userRepository.save(user);
 
-        log.debug(">> test 계정 생성 완료 admin ID:{}, pwd:{}", admin.getUserId(), "admin1234");
-        log.debug(">> test 계정 생성 완료 user ID:{}, pwd:{}", user.getId(), "user1234");
+        log.info(">> test 계정 생성 완료 admin ID:{}, pwd:{}", adminId, adminPwd);
+        log.info(">> test 계정 생성 완료 user ID:{}, pwd:{}", userId, userPwd);
     }
 }
