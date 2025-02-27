@@ -93,7 +93,8 @@ public class JwtHelper {
     }
 
     public String getAccessTokenFromHeader() {
-        String bearerToken = ServletUtils.getHeader(HttpHeaders.AUTHORIZATION);
+        String bearerToken = ServletUtils.getHeader(HttpHeaders.AUTHORIZATION)
+                .orElseThrow();
 
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.split(" ")[1].trim();

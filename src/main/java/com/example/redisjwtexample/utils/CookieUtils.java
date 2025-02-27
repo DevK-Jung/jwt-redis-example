@@ -23,7 +23,7 @@ public class CookieUtils {
                           long maxAgeSeconds,
                           boolean isSecure) {
 
-        HttpServletResponse response = ServletUtils.getServletResponse();
+        HttpServletResponse response = ServletUtils.getServletResponse().orElseThrow();
 
         Cookie cookie = new Cookie(key, value);
         cookie.setHttpOnly(isSecure); // JavaScript에서 접근 불가 (XSS 방어)
@@ -42,7 +42,7 @@ public class CookieUtils {
      */
     public String getCookie(String key) {
 
-        HttpServletRequest request = ServletUtils.getServletRequest();
+        HttpServletRequest request = ServletUtils.getServletRequest().orElseThrow();
 
         Cookie[] cookies = request.getCookies();
 
@@ -64,7 +64,7 @@ public class CookieUtils {
      */
     public void deleteCookie(String key) {
 
-        HttpServletResponse response = ServletUtils.getServletResponse();
+        HttpServletResponse response = ServletUtils.getServletResponse().orElseThrow();
 
         Cookie cookie = new Cookie(key, "");
 

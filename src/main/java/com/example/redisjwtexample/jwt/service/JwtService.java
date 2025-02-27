@@ -90,7 +90,7 @@ public class JwtService {
         // Refresh Token을 Cookie에 저장
         boolean httpSecure = env.matchesProfiles("prod"); // 운영환경에서 secure 설정
 
-        CookieUtils.setRefreshTokenCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, remainingTime, httpSecure);
+        CookieUtils.setCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, "/", remainingTime, httpSecure);
     }
 
     // accessToken, refreshToken 둘 다 재생성 하도록 만들어서 redis에서 최신 refreshToken만 유지
