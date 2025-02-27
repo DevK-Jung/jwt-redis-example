@@ -1,8 +1,5 @@
 package com.example.redisjwtexample.jwt.service;
 
-import com.example.redisjwtexample.jwt.constants.ClaimKeys;
-import com.example.redisjwtexample.jwt.constants.TokenType;
-import com.example.redisjwtexample.jwt.dto.ReissueDto;
 import com.example.redisjwtexample.jwt.dto.TokenDto;
 import com.example.redisjwtexample.jwt.helper.JwtHelper;
 import com.example.redisjwtexample.jwt.redis.blacklist.service.AccessTokenBlacklistService;
@@ -43,20 +40,74 @@ public class JwtService {
     private final AccessTokenBlacklistService accessTokenBlacklistService;
 
     private final Environment env;
-
     private static final String REFRESH_TOKEN_COOKIE_KEY = "refreshToken";
 
-    public TokenDto jwtLogin(@NonNull Authentication authentication) {
+    /**
+     * AccessToken, RefreshToken 생성
+     * <ul>
+     *     <li>RefreshToken: Cookie 및 Redis에 세팅</li>
+     * </ul>
+     *
+     * @param authentication Authentication
+     * @return TokenDto(accessToken, refreshToken)
+     */
+    public TokenDto generateJwtTokens(@NonNull Authentication authentication) {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
         String userId = userDetails.getUsername();
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
-        return generateToken(userId, role);
+        return generateJwtTokens(userId, role);
     }
 
-    private TokenDto generateToken(String userId, String role) {
+    /**
+     * AccessToken, RefreshToken 강제 만료 처리
+     * <ul>
+     *     <li>AccessToken: Header로 부터 읽어오며 만료되지 않았으면 Redis BlackList에 추가</li>
+     *     <li>RefreshToken: Cookie로 부터 읽어오며 만료되지 않았으면 Redis 에서 제거</li>
+     * </ul>
+     */
+    public void expireJwtToken() {
+
+        expireRefreshToken(); // refreshToken 만료 처리 - redis 에서 제거
+
+        expireAccessToken(); // accessToken 만료 처리 - redis에 blacklist로 추가
+    }
+
+    /**
+     * AccessToken, RefreshToken 재발행 - AccessToken 만료시 호출
+     * <ul>
+     *     <li>accessToken, refreshToken 둘 다 재생성 하도록 만들어서 redis 에서 최신 refreshToken만 유지</li>
+     * </ul>
+     *
+     * @return TokenDto(accessToken, refreshToken)
+     */
+    public TokenDto reissue() {
+
+
+        String accessToken = getRequestAccessTokenFromHeader(); // accessToken 조회
+        String refreshToken = getRequestRefreshTokenFromCookie(); // refreshToken 조회
+
+        // token 재발행을 위한 검증
+        validateTokenRefresh(accessToken, refreshToken);
+
+        // 사용자 정보 조회 및 검증
+        String userId = getUserId(refreshToken);
+
+        UserEntity user = userRepository.findByUserId(userId)
+                .orElseThrow();
+
+        CustomUserDetails customUserDetails = CustomUserDetails.fromEntity(user);
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(customUserDetails, null);
+
+        // JWT 토큰 생성
+        return generateJwtTokens(authenticationToken);
+
+    }
+
+    private TokenDto generateJwtTokens(String userId, String role) {
         // JWT 토큰 생성
         String accessToken = jwtHelper.generateAccessToken(userId, role);
         String refreshToken = jwtHelper.generateRefreshToken(userId, role);
@@ -88,36 +139,17 @@ public class JwtService {
 
     private void setRefreshTokenCookie(String refreshToken, long remainingTime) {
         // Refresh Token을 Cookie에 저장
-        boolean httpSecure = env.matchesProfiles("prod"); // 운영환경에서 secure 설정
+        boolean httpSecure = env.matchesProfiles("prod"); // todo 운영 환경에서 secure 설정
 
         CookieUtils.setCookie(REFRESH_TOKEN_COOKIE_KEY, refreshToken, "/", remainingTime, httpSecure);
     }
 
-    // accessToken, refreshToken 둘 다 재생성 하도록 만들어서 redis에서 최신 refreshToken만 유지
-    // 토큰 탈취로 이전 refreshToken으로 재발급 수행 시 에러 발생하도록 구현
-    public TokenDto reissue() {
-
-        String accessToken = getRequestAccessToken();
-        String refreshToken = getRequestRefreshToken();
-
-        // token 재발행을 위한 검증
-        validateTokenRefresh(accessToken, refreshToken);
-
-        // 사용자 정보 조회 및 검증
-        String userId = getUserId(refreshToken);
-
-        UserEntity user = userRepository.findByUserId(userId)
-                .orElseThrow();
-
-        CustomUserDetails customUserDetails = CustomUserDetails.fromEntity(user);
-
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(customUserDetails, null);
-
-        // JWT 토큰 생성
-        return jwtLogin(authenticationToken);
-
-    }
-
+    /**
+     * 재발행을 위한 토큰 검증
+     *
+     * @param accessToken  accessToken
+     * @param refreshToken refreshToken
+     */
     private void validateTokenRefresh(String accessToken, String refreshToken) {
         // accessToken, RefreshToken 빈 값 체크
         if (StringUtils.isBlank(accessToken) || StringUtils.isBlank(refreshToken))
@@ -127,34 +159,9 @@ public class JwtService {
         if (jwtHelper.validateToken(accessToken))
             throw new IllegalArgumentException("accessToken 만료 시 갱신 요청 가능합니다.");
 
-        // refreshToken 만료 확인 - 만료됐으면 세션 만료페이지로 이동시켜야함
-        if (!isRefreshTokenMatched())
-            throw new IllegalArgumentException();
-    }
-
-
-    private String validateRefreshToken(ReissueDto reissueDto) {
-        Claims claims = jwtHelper.parseToken(reissueDto.getRefreshToken());
-        String tokenType = getValueFromClaims(claims, ClaimKeys.TOKEN_TYPE.name(), String.class);
-
-        // refreshToken 아니라면 에러 발생
-        if (!TokenType.REFRESH.name().equals(tokenType)) throw new IllegalArgumentException("Refresh Token이 아닙니다.");
-
-        String userId = getUserIdByClaims(claims);
-        RefreshTokenEntity refreshTokenEntity = refreshTokenRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 Refresh Token입니다."));
-
-        if (!refreshTokenEntity.getRefreshToken().equals(reissueDto.getRefreshToken()))
+        // refreshToken Redis에 저장되어있는 항목과 비교
+        if (!isRefreshTokenValidInRedis(refreshToken))
             throw new IllegalArgumentException("다른 환경에서 로그인한 이력이 있어 재인증이 필요합니다.");
-
-        return userId;
-    }
-
-    public void jwtLogout() {
-
-        expireRefreshToken();
-
-        expireAccessToken();
     }
 
     private void expireRefreshToken() {
@@ -180,7 +187,7 @@ public class JwtService {
     }
 
     private void expireAccessToken() {
-        String accessToken = getRequestAccessToken();
+        String accessToken = getRequestAccessTokenFromHeader();
 
         if (StringUtils.isBlank(accessToken)) return;
 
@@ -198,7 +205,7 @@ public class JwtService {
 
     }
 
-    private String getRequestAccessToken() {
+    private String getRequestAccessTokenFromHeader() {
         return jwtHelper.getAccessTokenFromHeader();
     }
 
@@ -220,10 +227,6 @@ public class JwtService {
         return responseType.cast(value);
     }
 
-    private String getUserIdByClaims(Claims claims) {
-        return claims.getSubject();
-    }
-
     public Claims getClaimsByToken(@NonNull String token) {
         Objects.requireNonNull(token);
 
@@ -237,24 +240,27 @@ public class JwtService {
         return accessTokenBlacklistService.isBlacklisted(accessToken);
     }
 
+
+    public boolean isRefreshTokenValidInRedis() {
+        String refreshToken = getRequestRefreshTokenFromCookie();
+
+        return isRefreshTokenValidInRedis(refreshToken);
+    }
+
     /**
      * Client로 부터 넘어온 RefreshToken과 로그인 및 재발급시 저장한 refreshToken 을 비교
      *
      * @return 매치여부
      */
-    public boolean isRefreshTokenMatched() {
-
-        String refreshToken = getRequestRefreshToken();
+    public boolean isRefreshTokenValidInRedis(String refreshToken) {
 
         if (StringUtils.isBlank(refreshToken)) throw new IllegalArgumentException();
 
         String userId = getUserId(refreshToken);
 
-//        if (allowDuplicateLoginIds.contains(userId)) return true; // 중복 로그인 허용 id
-
         Optional<RefreshTokenEntity> refreshTokenOpt = refreshTokenRepository.findById(userId);
 
-        if (refreshTokenOpt.isEmpty()) throw new IllegalArgumentException();
+        if (refreshTokenOpt.isEmpty()) throw new IllegalArgumentException("유효하지 않은 Refresh Token입니다.");
 
         return refreshTokenOpt.get().getRefreshToken().equals(refreshToken);
     }
@@ -264,7 +270,7 @@ public class JwtService {
                 .getSubject();
     }
 
-    public String getRequestRefreshToken() {
+    public String getRequestRefreshTokenFromCookie() {
 
         return CookieUtils.getCookie(REFRESH_TOKEN_COOKIE_KEY);
     }

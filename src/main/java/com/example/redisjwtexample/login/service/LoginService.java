@@ -25,13 +25,13 @@ public class LoginService {
 
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
-        TokenDto tokenDto = jwtLogin.jwtLogin(authenticate);
+        TokenDto tokenDto = jwtLogin.generateJwtTokens(authenticate);
 
         return new LoginRespDto(loginReqDto.getUserId(), tokenDto);
     }
 
     public void logout() {
 
-        jwtLogin.jwtLogout();
+        jwtLogin.expireJwtToken();
     }
 }

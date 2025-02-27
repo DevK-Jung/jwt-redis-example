@@ -89,7 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throw new ExpiredJwtException(null, null, "강제 만료된 accessToken 재발행 필요");
 
         // refreshToken 다르면 중복 로그인
-        if (!jwtService.isRefreshTokenMatched())
+        if (!jwtService.isRefreshTokenValidInRedis())
             throw new RuntimeException("중복 로그인");
     }
 
