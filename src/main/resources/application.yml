@@ -47,6 +47,7 @@ jwt:
   secret: 8M8M7G5ZyuorH4CP6UhcX0/4je6nYgmfI/05lf9TVO80jZOq1+v220eB5bRW+sRRVhXuGCnHJKniF5SbXz0DiA==
   access-expiration: 10s
   refresh-expiration: 1h
+  issuer: KIM
 
 # users table 에 sample 사용자 데이터 2개 추가 - true, false
 sample:

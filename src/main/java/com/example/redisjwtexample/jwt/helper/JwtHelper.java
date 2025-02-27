@@ -21,14 +21,17 @@ import java.util.Map;
 public class JwtHelper {
 
     private final SecretKey key;
+    private final String issuer;
     private final Duration accessTokenExpiration;
     private final Duration refreshTokenExpiration;
 
     public JwtHelper(@Value("${jwt.secret}") String secret,
+                     @Value("${jwt.issuer}") String issuer,
                      @Value("${jwt.access-expiration}") Duration accessTokenExpiration,
                      @Value("${jwt.refresh-expiration}") Duration refreshTokenExpiration) {
 
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.issuer = issuer;
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
 
@@ -40,7 +43,7 @@ public class JwtHelper {
     public String generateAccessToken(String username, String role) {
 
         return Jwts.builder()
-                .issuer("KIM")
+                .issuer(issuer)
                 .subject(username)
                 .claims(Map.of(
                         ClaimKeys.ROLE.name(), role,
@@ -57,7 +60,7 @@ public class JwtHelper {
      */
     public String generateRefreshToken(String username, String role) {
         return Jwts.builder()
-                .issuer("KIM")
+                .issuer(issuer)
                 .subject(username)
                 .claims(Map.of(
                         ClaimKeys.ROLE.name(), role,
