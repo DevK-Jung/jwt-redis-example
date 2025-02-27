@@ -1,7 +1,7 @@
 package com.example.redisjwtexample.redis;
 
-import com.example.redisjwtexample.redis.refresh.entity.RefreshTokenEntity;
-import com.example.redisjwtexample.redis.refresh.repository.RefreshTokenRepository;
+import com.example.redisjwtexample.jwt.redis.refresh.entity.RefreshTokenEntity;
+import com.example.redisjwtexample.jwt.redis.refresh.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package com.example.redisjwtexample.redis.refresh.entity;
+package com.example.redisjwtexample.jwt.redis.refresh.entity;
 
 import lombok.AccessLevel;
 import lombok.Getter;

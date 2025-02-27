@@ -1,4 +1,4 @@
-package com.example.redisjwtexample.redis.blacklist.service;
+package com.example.redisjwtexample.jwt.redis.blacklist.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;

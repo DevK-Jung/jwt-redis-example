@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(excludeUrls).permitAll()
                         .anyRequest().authenticated()
                 )
+                
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint))
 
