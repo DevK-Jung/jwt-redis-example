@@ -186,7 +186,7 @@ public class JwtService {
         }
     }
 
-    private void expireAccessToken() {
+    public void expireAccessToken() {
         String accessToken = getRequestAccessTokenFromHeader();
 
         if (StringUtils.isBlank(accessToken)) return;
